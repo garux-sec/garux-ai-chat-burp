@@ -56,7 +56,7 @@ public class ChatPanel extends JPanel {
         setBackground(Color.WHITE);
         setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         buildUI();
-        appendSystemMessage("Garux AI Chat ready. เลือก Provider ใน Settings แล้วเริ่มแชทได้เลย 🔥");
+        appendSystemMessage("Garux AI Chat ready. Select a provider in Settings and start chatting 🔥");
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -284,7 +284,7 @@ public class ChatPanel extends JPanel {
         htmlBlocks.clear();
         history.clear();
         chatPane.setText("<html><body></body></html>");
-        appendSystemMessage("Chat cleared. พร้อมแล้ว 🔥");
+        appendSystemMessage("Chat cleared. Ready 🔥");
     }
 
     private void setSending(boolean sending) {
