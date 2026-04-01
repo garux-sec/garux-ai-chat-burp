@@ -1,7 +1,6 @@
 package com.aireport.burp.ui;
 
 import burp.api.montoya.MontoyaApi;
-import burp.api.montoya.core.ToolType;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.ui.contextmenu.ContextMenuEvent;
 import burp.api.montoya.ui.contextmenu.ContextMenuItemsProvider;
@@ -11,16 +10,6 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Registers right-click context menu items in Burp's HTTP history,
- * Repeater, Intruder, and other tools.
- *
- * Adds these menu items under "AI Chat":
- *  - Analyze Request with AI
- *  - Analyze Response with AI
- *  - Analyze Request + Response with AI
- *  - Send to AI Chat (append to input)
- */
 public class ContextMenuProvider implements ContextMenuItemsProvider {
 
     private final MontoyaApi api;
@@ -35,7 +24,6 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
     public List<Component> provideMenuItems(ContextMenuEvent event) {
         List<HttpRequestResponse> items = event.selectedRequestResponses();
         if (items == null || items.isEmpty()) {
-            // Try message editor item
             var editorItem = event.messageEditorRequestResponse();
             if (editorItem.isEmpty()) return List.of();
             items = List.of(editorItem.get().requestResponse());
@@ -43,27 +31,6 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
 
         List<HttpRequestResponse> finalItems = items;
         List<Component> menu = new ArrayList<>();
-
-        // ── Sub-menu ──────────────────────────────────────────────────
-        // ── Top-level shortcut: "Send to Garux AI Chat" ──────────────
-        JMenuItem sendToGarux = new JMenuItem("Send to Garux AI Chat");
-        sendToGarux.setFont(sendToGarux.getFont().deriveFont(Font.BOLD));
-        sendToGarux.addActionListener(e -> {
-            for (HttpRequestResponse rr : finalItems) {
-                StringBuilder sb = new StringBuilder();
-                if (rr.request() != null) {
-                    sb.append("### Request:\n```http\n").append(rr.request().toString()).append("\n```\n\n");
-                }
-                if (rr.response() != null) {
-                    String resp = rr.response().toString();
-                    if (resp.length() > 8000) resp = resp.substring(0, 8000) + "\n... [truncated]";
-                    sb.append("### Response:\n```http\n").append(resp).append("\n```");
-                }
-                chatPanel.appendToInput(sb.toString().trim());
-                break;
-            }
-        });
-        menu.add(sendToGarux);
 
         JMenu aiMenu = new JMenu("Garux AI Chat");
 
@@ -74,15 +41,10 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
             for (HttpRequestResponse rr : finalItems) {
                 if (rr.request() != null) {
                     sb.append("Analyze this HTTP request for security vulnerabilities:\n\n");
-                    sb.append("```http\n");
-                    sb.append(rr.request().toString());
-                    sb.append("\n```\n\n");
+                    sb.append("```http\n").append(rr.request().toString()).append("\n```\n\n");
                 }
             }
-            if (!sb.isEmpty()) {
-                chatPanel.sendDirect(sb.toString().trim());
-                focusChatTab();
-            }
+            if (!sb.isEmpty()) { chatPanel.sendDirect(sb.toString().trim()); focusChatTab(); }
         });
 
         // 2. Analyze Response
@@ -92,37 +54,25 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
             for (HttpRequestResponse rr : finalItems) {
                 if (rr.response() != null) {
                     sb.append("Analyze this HTTP response for security issues, sensitive data exposure, and misconfigurations:\n\n");
-                    sb.append("```http\n");
-                    sb.append(rr.response().toString());
-                    sb.append("\n```\n\n");
+                    sb.append("```http\n").append(rr.response().toString()).append("\n```\n\n");
                 }
             }
-            if (!sb.isEmpty()) {
-                chatPanel.sendDirect(sb.toString().trim());
-                focusChatTab();
-            }
+            if (!sb.isEmpty()) { chatPanel.sendDirect(sb.toString().trim()); focusChatTab(); }
         });
 
-        // 3. Analyze Both (Request + Response)
+        // 3. Analyze Request + Response
         JMenuItem analyzeBoth = new JMenuItem("Analyze Request + Response");
         analyzeBoth.addActionListener(e -> {
             StringBuilder sb = new StringBuilder();
             sb.append("Analyze this HTTP request/response pair for security vulnerabilities (SQLi, XSS, IDOR, auth bypass, etc.):\n\n");
             for (HttpRequestResponse rr : finalItems) {
                 if (rr.request() != null) {
-                    sb.append("### Request:\n```http\n");
-                    sb.append(rr.request().toString());
-                    sb.append("\n```\n\n");
+                    sb.append("### Request:\n```http\n").append(rr.request().toString()).append("\n```\n\n");
                 }
                 if (rr.response() != null) {
-                    sb.append("### Response:\n```http\n");
-                    // Truncate very large responses to avoid token limits
                     String resp = rr.response().toString();
-                    if (resp.length() > 8000) {
-                        resp = resp.substring(0, 8000) + "\n... [truncated]";
-                    }
-                    sb.append(resp);
-                    sb.append("\n```\n\n");
+                    if (resp.length() > 8000) resp = resp.substring(0, 8000) + "\n... [truncated]";
+                    sb.append("### Response:\n```http\n").append(resp).append("\n```\n\n");
                 }
             }
             chatPanel.sendDirect(sb.toString().trim());
@@ -134,33 +84,32 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
         findInjection.addActionListener(e -> {
             for (HttpRequestResponse rr : finalItems) {
                 if (rr.request() == null) continue;
-                String prompt =
+                chatPanel.sendDirect(
                     "List all injection points in this request. " +
                     "For each parameter, suggest the type of injection to test (SQLi, XSS, SSTI, XXE, SSRF, etc.) " +
-                    "and provide a basic test payload:\n\n" +
-                    "```http\n" + rr.request().toString() + "\n```";
-                chatPanel.sendDirect(prompt);
-                focusChatTab();
-                break; // one item at a time
-            }
-        });
-
-        // 5. Generate Curl Command
-        JMenuItem genCurl = new JMenuItem("Generate curl Command");
-        genCurl.addActionListener(e -> {
-            for (HttpRequestResponse rr : finalItems) {
-                if (rr.request() == null) continue;
-                String prompt =
-                    "Convert this HTTP request to a curl command:\n\n" +
-                    "```http\n" + rr.request().toString() + "\n```";
-                chatPanel.sendDirect(prompt);
+                    "and provide a basic test payload:\n\n```http\n" + rr.request().toString() + "\n```"
+                );
                 focusChatTab();
                 break;
             }
         });
 
-        // 6. Append to input (don't auto-send)
-        JMenuItem appendToInput = new JMenuItem("Send to AI Chat Input");
+        // 5. Generate curl Command
+        JMenuItem genCurl = new JMenuItem("Generate curl Command");
+        genCurl.addActionListener(e -> {
+            for (HttpRequestResponse rr : finalItems) {
+                if (rr.request() == null) continue;
+                chatPanel.sendDirect(
+                    "Convert this HTTP request to a curl command:\n\n```http\n" +
+                    rr.request().toString() + "\n```"
+                );
+                focusChatTab();
+                break;
+            }
+        });
+
+        // 6. Send to Garux AI Chat Input (append, don't auto-send)
+        JMenuItem appendToInput = new JMenuItem("Send to Garux AI Chat");
         appendToInput.addActionListener(e -> {
             for (HttpRequestResponse rr : finalItems) {
                 if (rr.request() != null) {
@@ -183,9 +132,7 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
         return menu;
     }
 
-    /** Switch Burp's focus to the AI Chat tab. */
     private void focusChatTab() {
-        // Burp doesn't expose a direct tab-focus API; logging is sufficient.
         api.logging().logToOutput("[Garux AI Chat] Request sent to chat panel.");
     }
 }

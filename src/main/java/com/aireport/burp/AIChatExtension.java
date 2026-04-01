@@ -11,16 +11,6 @@ import javax.swing.*;
 import javax.swing.event.ChangeListener;
 import java.awt.*;
 
-/**
- * Garux AI Chat — Burp Suite AI Assistant Extension
- *
- * Adds an AI chatbot tab to Burp Suite that can:
- *  - Chat with OpenAI / Anthropic Claude / Ollama
- *  - Analyze selected HTTP requests & responses
- *  - Answer web security / pentest questions in context
- *
- * Load this jar via Burp > Extensions > Add
- */
 public class AIChatExtension implements BurpExtension {
 
     static final String NAME = "Garux AI Chat";
@@ -45,7 +35,7 @@ public class AIChatExtension implements BurpExtension {
                 new ContextMenuProvider(api, chatPanel)
         );
 
-        // Inject custom tab badge component after Burp adds us to its JTabbedPane
+        // Inject red dot badge after Burp renders the tab
         SwingUtilities.invokeLater(this::injectTabBadge);
 
         api.logging().logToOutput("[" + NAME + "] Extension loaded successfully.");
@@ -62,11 +52,6 @@ public class AIChatExtension implements BurpExtension {
         return root;
     }
 
-    /**
-     * Traverse Burp's Swing hierarchy to find the JTabbedPane that holds our tab,
-     * then replace its title with a TabBadgeComponent (supports red dot).
-     * Retries up to 10× with 200 ms delay to handle Burp's deferred UI init.
-     */
     private void injectTabBadge() {
         Timer timer = new Timer(200, null);
         final int[] attempts = {0};
@@ -78,18 +63,16 @@ public class AIChatExtension implements BurpExtension {
             if (burpTabs != null) {
                 for (int i = 0; i < burpTabs.getTabCount(); i++) {
                     if (mainTabPanel.equals(burpTabs.getComponentAt(i))) {
-                        // Replace plain string title with custom badge component
                         TabBadgeComponent badge = new TabBadgeComponent(NAME);
                         burpTabs.setTabComponentAt(i, badge);
                         chatPanel.setTabBadge(badge);
 
                         // Clear badge when user clicks our tab
-                        ChangeListener cl = ce -> {
+                        burpTabs.addChangeListener(ce -> {
                             if (burpTabs.getSelectedComponent() == mainTabPanel) {
                                 badge.showBadge(false);
                             }
-                        };
-                        burpTabs.addChangeListener(cl);
+                        });
 
                         timer.stop();
                         api.logging().logToOutput("[" + NAME + "] Tab badge injected.");
@@ -100,7 +83,6 @@ public class AIChatExtension implements BurpExtension {
 
             if (attempts[0] >= 10) {
                 timer.stop();
-                api.logging().logToOutput("[" + NAME + "] Could not inject tab badge.");
             }
         });
 
@@ -108,7 +90,6 @@ public class AIChatExtension implements BurpExtension {
         timer.start();
     }
 
-    /** Walk up the Swing parent chain looking for a JTabbedPane. */
     private static JTabbedPane findParentTabbedPane(Component comp) {
         Container parent = comp.getParent();
         while (parent != null) {
