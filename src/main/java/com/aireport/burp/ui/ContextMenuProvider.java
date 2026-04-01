@@ -45,6 +45,26 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
         List<Component> menu = new ArrayList<>();
 
         // ── Sub-menu ──────────────────────────────────────────────────
+        // ── Top-level shortcut: "Send to Garux AI Chat" ──────────────
+        JMenuItem sendToGarux = new JMenuItem("Send to Garux AI Chat");
+        sendToGarux.setFont(sendToGarux.getFont().deriveFont(Font.BOLD));
+        sendToGarux.addActionListener(e -> {
+            for (HttpRequestResponse rr : finalItems) {
+                StringBuilder sb = new StringBuilder();
+                if (rr.request() != null) {
+                    sb.append("### Request:\n```http\n").append(rr.request().toString()).append("\n```\n\n");
+                }
+                if (rr.response() != null) {
+                    String resp = rr.response().toString();
+                    if (resp.length() > 8000) resp = resp.substring(0, 8000) + "\n... [truncated]";
+                    sb.append("### Response:\n```http\n").append(resp).append("\n```");
+                }
+                chatPanel.appendToInput(sb.toString().trim());
+                break;
+            }
+        });
+        menu.add(sendToGarux);
+
         JMenu aiMenu = new JMenu("Garux AI Chat");
 
         // 1. Analyze Request

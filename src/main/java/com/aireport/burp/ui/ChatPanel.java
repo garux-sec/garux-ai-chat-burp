@@ -2,6 +2,7 @@ package com.aireport.burp.ui;
 
 import burp.api.montoya.MontoyaApi;
 import com.aireport.burp.ai.*;
+import com.aireport.burp.ui.TabBadgeComponent;
 
 import javax.swing.*;
 import javax.swing.text.html.HTMLEditorKit;
@@ -35,6 +36,9 @@ public class ChatPanel extends JPanel {
     private final MontoyaApi    api;
     private final SettingsPanel settings;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    /** Red dot badge on the Burp suite tab — injected after UI init. */
+    private TabBadgeComponent tabBadge;
 
     /** Conversation history sent to AI on every turn. */
     private final List<ChatMessage> history = new ArrayList<>();
@@ -213,15 +217,27 @@ public class ChatPanel extends JPanel {
     // ──────────────────────────────────────────────────────────────────
     // Public API (used by ContextMenuProvider)
     // ──────────────────────────────────────────────────────────────────
+    /** Called by AIChatExtension after the badge component is injected. */
+    public void setTabBadge(TabBadgeComponent badge) {
+        this.tabBadge = badge;
+    }
+
+    /** Light up the red dot on the suite tab. */
+    private void triggerBadge() {
+        if (tabBadge != null) tabBadge.showBadge(true);
+    }
+
     public void appendToInput(String text) {
         String cur = inputArea.getText();
         inputArea.setText(cur.isBlank() ? text : cur + "\n\n" + text);
         inputArea.requestFocus();
+        triggerBadge();
     }
 
     public void sendDirect(String prompt) {
         SwingUtilities.invokeLater(() -> {
             inputArea.setText(prompt);
+            triggerBadge();
             sendMessage();
         });
     }
