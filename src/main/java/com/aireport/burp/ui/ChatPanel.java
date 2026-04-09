@@ -90,9 +90,9 @@ public class ChatPanel extends JPanel {
         // Set up global stylesheet
         HTMLEditorKit kit = new HTMLEditorKit();
         StyleSheet css = kit.getStyleSheet();
-        css.addRule("body { font-family: 'SansSerif'; font-size: 13px; margin: 6px; background: #ffffff; }");
+        css.addRule("body { font-family: 'SansSerif'; font-size: 15px; margin: 6px; background: #ffffff; }");
         css.addRule("pre  { background: #f5f5f5; padding: 8px; border-left: 3px solid #aaa;"
-                  + "       font-family: monospace; font-size: 12px; white-space: pre-wrap; }");
+                  + "       font-family: monospace; font-size: 14px; white-space: pre-wrap; }");
         css.addRule("code { background: #f0f0f0; font-family: monospace; padding: 1px 4px; }");
         css.addRule("h2,h3,h4 { margin: 4px 0; }");
         css.addRule("ul,ol { margin: 2px 0; padding-left: 18px; }");
@@ -253,7 +253,7 @@ public class ChatPanel extends JPanel {
 
         String block =
             "<div class='bubble'>" +
-            "<span style='color:" + color + ";font-weight:bold;font-size:12px'>" +
+            "<span style='color:" + color + ";font-weight:bold;font-size:13px'>" +
             "[" + time + "] " + MarkdownRenderer.escHtml(sender) + ":</span><br>" +
             body +
             "</div>";
