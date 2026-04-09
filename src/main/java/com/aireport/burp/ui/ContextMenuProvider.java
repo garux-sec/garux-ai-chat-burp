@@ -7,6 +7,7 @@ import burp.api.montoya.ui.contextmenu.ContextMenuItemsProvider;
 
 import javax.swing.*;
 import java.awt.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,7 +42,7 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
             for (HttpRequestResponse rr : finalItems) {
                 if (rr.request() != null) {
                     sb.append("Analyze this HTTP request for security vulnerabilities:\n\n");
-                    sb.append("```http\n").append(rr.request().toString()).append("\n```\n\n");
+                    sb.append("```http\n").append(toUtf8(rr.request())).append("\n```\n\n");
                 }
             }
             if (!sb.isEmpty()) { chatPanel.sendDirect(sb.toString().trim()); focusChatTab(); }
@@ -54,7 +55,7 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
             for (HttpRequestResponse rr : finalItems) {
                 if (rr.response() != null) {
                     sb.append("Analyze this HTTP response for security issues, sensitive data exposure, and misconfigurations:\n\n");
-                    sb.append("```http\n").append(rr.response().toString()).append("\n```\n\n");
+                    sb.append("```http\n").append(toUtf8(rr.response())).append("\n```\n\n");
                 }
             }
             if (!sb.isEmpty()) { chatPanel.sendDirect(sb.toString().trim()); focusChatTab(); }
@@ -67,10 +68,10 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
             sb.append("Analyze this HTTP request/response pair for security vulnerabilities (SQLi, XSS, IDOR, auth bypass, etc.):\n\n");
             for (HttpRequestResponse rr : finalItems) {
                 if (rr.request() != null) {
-                    sb.append("### Request:\n```http\n").append(rr.request().toString()).append("\n```\n\n");
+                    sb.append("### Request:\n```http\n").append(toUtf8(rr.request())).append("\n```\n\n");
                 }
                 if (rr.response() != null) {
-                    String resp = rr.response().toString();
+                    String resp = toUtf8(rr.response());
                     if (resp.length() > 8000) resp = resp.substring(0, 8000) + "\n... [truncated]";
                     sb.append("### Response:\n```http\n").append(resp).append("\n```\n\n");
                 }
@@ -87,7 +88,7 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
                 chatPanel.sendDirect(
                     "List all injection points in this request. " +
                     "For each parameter, suggest the type of injection to test (SQLi, XSS, SSTI, XXE, SSRF, etc.) " +
-                    "and provide a basic test payload:\n\n```http\n" + rr.request().toString() + "\n```"
+                    "and provide a basic test payload:\n\n```http\n" + toUtf8(rr.request()) + "\n```"
                 );
                 focusChatTab();
                 break;
@@ -101,7 +102,7 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
                 if (rr.request() == null) continue;
                 chatPanel.sendDirect(
                     "Convert this HTTP request to a curl command:\n\n```http\n" +
-                    rr.request().toString() + "\n```"
+                    toUtf8(rr.request()) + "\n```"
                 );
                 focusChatTab();
                 break;
@@ -113,7 +114,7 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
         appendToInput.addActionListener(e -> {
             for (HttpRequestResponse rr : finalItems) {
                 if (rr.request() != null) {
-                    chatPanel.appendToInput("```http\n" + rr.request().toString() + "\n```");
+                    chatPanel.appendToInput("```http\n" + toUtf8(rr.request()) + "\n```");
                 }
             }
             focusChatTab();
@@ -134,5 +135,14 @@ public class ContextMenuProvider implements ContextMenuItemsProvider {
 
     private void focusChatTab() {
         api.logging().logToOutput("[Garux AI Chat] Request sent to chat panel.");
+    }
+
+    /** Convert Burp message bytes to UTF-8 string (fixes Thai/non-ASCII garbling). */
+    private static String toUtf8(burp.api.montoya.http.message.requests.HttpRequest req) {
+        return new String(req.toByteArray().getBytes(), StandardCharsets.UTF_8);
+    }
+
+    private static String toUtf8(burp.api.montoya.http.message.responses.HttpResponse resp) {
+        return new String(resp.toByteArray().getBytes(), StandardCharsets.UTF_8);
     }
 }
